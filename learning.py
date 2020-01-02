@@ -1,6 +1,15 @@
 import random
 import csv
 import sys
+from os import system, name 
+
+def clear_console(): 
+    # for windows 
+    if name == 'nt': 
+        _ = system('cls') 
+    # for mac and linux(here, os.name is 'posix') 
+    else: 
+        _ = system('clear') 
 
 class Question:
     def __init__(self,left,right):
@@ -41,6 +50,7 @@ class QuestionInterface:
         while True:
             if(self.questionsRemaining()):
                 return
+            clear_console()
 
             random_pic = random.randint(0,len(self.questions)-1)
             item = self.questions[random_pic]
@@ -49,6 +59,7 @@ class QuestionInterface:
                 self.questions.remove(item)
             else:
                 print("Wrong should be {}".format(item.hint()))
+                input("Enter to continue")
 
 fileQuestions = []
 
