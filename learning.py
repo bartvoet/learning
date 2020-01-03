@@ -3,14 +3,6 @@ import csv
 import sys
 from os import system, name 
 
-def clear_console(): 
-    # for windows 
-    if name == 'nt': 
-        _ = system('cls') 
-    # for mac and linux(here, os.name is 'posix') 
-    else: 
-        _ = system('clear') 
-
 class Question:
     def __init__(self,left,right):
         self.left = left
@@ -33,62 +25,86 @@ class Question:
     def hint(self):
         return self.left + " => " + ', '.join([str(elem) for elem in self.right])
 
-class QuestionInterface:
-    def __init__(self,questions):
-        self.initQuestions = questions
-        self.questions = questions.copy()
-        self.errors = []
-        self.counter = 0
+class ConsoleQuestionInterface:
 
-    def printRemaining(self):
-        print("({} of {} remaining)".format(self.questionsRemaining(),len(self.initQuestions)))
+    def clearConsole(self): 
+        # for windows 
+        if name == 'nt': 
+            _ = system('cls') 
+        # for mac and linux(here, os.name is 'posix') 
+        else: 
+            _ = system('clear') 
 
-    def ask(self,question):
-        return print(question + ": ") 
+    def printQuestion(self,question):
+        print(question + ": ")
 
     def get(self):
         return input("> ")
 
+    def ask(self,question):
+        self.clearConsole()
+        return print(question + ": ") 
+
+    def printRemaining(self,remaining,total,errors):
+        self.clearConsole()
+        print("({} of {} remaining)".format(remaining,total))
+        if len(errors) > 0:
+            print("Errors:")
+        for error in errors:
+            print("=> ",error.hint())
+        input("Type enter to continue")
+
+    def printError(self,error):
+        print("Wrong: {}".format(error.hint()))
+        input("Enter to continue")
+
+    def printEnd(self):
+        print("Done!!!")
+
+class QuestionState:
+    def __init__(self,questions,interface):
+        self.initQuestions = questions
+        self.questions = questions.copy()
+        self.errors = []
+        self.counter = 0
+        self.interface = interface
+
     def questionsRemaining(self):
         return len(self.questions)
-    
 
     def checkCounter(self):
         interrupt_at = 5
         self.counter = self.counter + 1
         if self.counter % interrupt_at == 0:
-            clear_console()
-            self.printRemaining()
-            if len(self.errors) > 0:
-                print("Errors")
-            for error in self.errors:
-                print(error.hint())
-            input("Type enter to continue")
+            self.interface.printRemaining(self.questionsRemaining(),len(self.initQuestions),self.errors)
 
+    def removeQuestion(self,item):
+        self.questions.remove(item)
+        if item in self.errors:
+            self.errors.remove(item)
+
+    def addError(self,item):
+        if item not in self.errors:
+            self.errors.append(item)
+
+    def nextQuestion(self):
+        self.checkCounter()
+                
+        random_pic = random.randint(0,len(self.questions)-1)
+        item = self.questions[random_pic]
+        
+        if item.checkAnswer(self.interface):
+            self.removeQuestion(item)
+        else:
+            self.addError(item)
+            self.interface.printError(item)
+      
     def run(self):
-        while True:
-            if(self.questionsRemaining() <= 0):
-                return
-
-            self.checkCounter()
-            clear_console()
-            
-            random_pic = random.randint(0,len(self.questions)-1)
-            item = self.questions[random_pic]
-            
-            if item.checkAnswer(interface):
-                self.questions.remove(item)
-                if item in self.errors:
-                    self.errors.remove(item)
-            else:
-                if item not in self.errors:
-                    self.errors.append(item)
-                print("Wrong: {}".format(item.hint()))
-                input("Enter to continue")
-        prin("Done!!!")
+        while self.questionsRemaining() > 0:
+            self.nextQuestion()
+        self.interface.printEnd()
 
 fileQuestions = []
-
 
 with open(sys.argv[1]) as csv_file:
     csv_reader = csv.reader(csv_file, delimiter=',')
@@ -96,6 +112,6 @@ with open(sys.argv[1]) as csv_file:
         question = row[0]
         answers = list(filter(None,row[1:]))
         fileQuestions.append(Question(question,answers))
-    interface = QuestionInterface(fileQuestions)
+    interface = QuestionState(fileQuestions,ConsoleQuestionInterface())
 
 interface.run()
